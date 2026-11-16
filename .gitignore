@@ -1,0 +1,31 @@
+# Python and editor caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.DS_Store
+.idea/
+.vscode/
+
+# Local credentials and machine configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Keep real runs, organization profiles, and client evidence outside the repo.
+runs/
+private-runs/
+outputs/
+artifacts/
+client-material/
+client-materials/
+clients/
+private/
+profiles/
+.local/
+*.local.*
