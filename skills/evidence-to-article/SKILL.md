@@ -5,7 +5,7 @@ description: Turn a research report, source article, filing or evidence packet i
 
 # Evidence to Article
 
-Version: 0.1.0. Produce complete drafts and traceable review results. Treat this as an agent-executed workflow with deterministic helpers, not an unattended service or a model trained on the user's conversations.
+Version: 0.2.0. Produce complete drafts and traceable review results. Treat this as an agent-executed workflow with deterministic helpers, not an unattended service or a model trained on the user's conversations.
 
 ## Establish this run
 
@@ -32,6 +32,8 @@ For each section, identify what the reader learns that the previous section did 
 
 Compose Chinese and English independently from the same claim set. Read [references/channels.md](references/channels.md) for distinct language requirements. Do not translate paragraph boundaries mechanically. Use a concrete sourced action or document when there is no reported human scene. Prefer verbs with actors over strings of abstract nouns.
 
+Use [references/authorial-voice.md](references/authorial-voice.md) when the task calls for a more personal, engaging or less institutional article. Select a voice from the task or profile; let evidence support visible editorial judgment without inventing experience. Do not mistake a warm voice for stronger factual certainty, or neutral prose for an automatic quality standard.
+
 Use one or two applicable techniques from [references/style-cards.md](references/style-cards.md) or supplied approved examples. Learn the function of an opening, transition or ending; do not copy phrasing, humor, anecdotes or market facts. Avoid adjective injection, fake imperfections, stock analogies and word-blacklist rewriting. Explain which actual passages were repaired and why.
 
 ## Review and repair independently
@@ -40,7 +42,7 @@ Delegate review when fresh agents are available. Give reviewers the current arti
 
 Use three lanes:
 
-- Readability: reconstruct the argument from lead/headings, then locate repetition, missing steps, unexplained terms, stilted language and unsupported narrative. Supply exact passages and reasons, not an AI-detector or self-assigned quality score.
+- Readability: reconstruct the argument from lead/headings, then locate repetition, missing steps, unexplained terms, stilted language and unsupported narrative. Check whether the selected voice helps the reader follow the reasoning, whether the author actually prioritizes evidence, and whether direct address sounds patronizing. Separate reader preference feedback from an agent's editorial judgment. Supply exact passages and reasons, not an AI-detector or self-assigned quality score.
 - Source/meaning: actually read evidence; check actors, numbers and their measures, dates, attribution, legal status, negation, conditions and causal strength. Compare matching claims across languages. Inspect new claims introduced during editing.
 - Overall/delivery: reconcile feedback, length, file versions, links and exported text; inspect required rendered documents. Recheck changes affecting prior approvals. Distinguish a rendered-page check, a platform preview and a human editorial approval.
 

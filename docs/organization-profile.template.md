@@ -12,7 +12,9 @@ scripts do not load it automatically.
 - **Reader and editorial purpose:** what the reader should understand or decide.
 - **Outputs:** languages, formats, body-count conventions and bounds, and any
   separately checked rendered-page target.
-- **Voice and structure:** a few concrete principles, with their boundaries.
+- **Core dependency:** Evidence to Article version, repository and tested commit; record the actual loaded version for each run. Reference the core rather than copying its rules.
+- **Voice and structure:** select neutral explainer, grounded personal, institutional commentary, or a supplied mode; name the narrator and the boundaries. First-person analysis does not authorize invented experience or institutional positions.
+- **Reader feedback:** exact artifact, date, speaker and approved scope; keep a personal preference separate from organization approval and measured editing-time improvement.
 - **Terminology:** preferred names, translations, and definitions.
 - **Required qualifications:** supplied legal or editorial text, its applicable
   scope, and where it belongs. Do not create organization policy from a guess.

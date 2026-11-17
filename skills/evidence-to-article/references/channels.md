@@ -4,6 +4,8 @@ Read only the requested language sections. Use task/profile lengths. When unspec
 
 ## Chinese explanatory article
 
+For a more personal explainer, apply [authorial-voice.md](authorial-voice.md) using the selected narrator and task scope. Keep authorial interpretation distinct from reported events; do not add autobiographical details. Let headings expose the concrete issue rather than merely classify terminology.
+
 Write from the Chinese reader's understanding order. Start with the actual event, choice, document or consequence. Introduce background when it explains that event. Use specific declarative subheadings by default, with no artificial equal-length pattern or empty suspense. Let evidence determine section length.
 
 Translate relationships and meaning, not English sentence order. Say who submitted a document, who signed an agreement and who received money before stacking institutional labels. Explain a necessary technical term when it becomes useful. Keep legal qualifications near the claims. End when the opening problem is resolved, without an additional abstract moral.
@@ -13,6 +15,8 @@ Use ordinary text weight by default. Bold only for navigation or a necessary dis
 Separate the reader's explanation from the editor's work log. State the factual distinction directly instead of writing “不能写成”“本文选择这样处理” or explaining how the draft was checked. Keep qualifications that change the claim beside it; consolidate detailed access limits, conflicting source endpoints and method notes below the article. Human/agent review status belongs in the delivery record, not the reading article. Before introducing a new legal or technical process, add the short sourced bridge a non-specialist needs to distinguish it from the previous one.
 
 ## English blog
+
+When the brief asks for a personal blog, apply [authorial-voice.md](authorial-voice.md). Allow supported interpretation and natural rhythm without importing another author's persona or making every paragraph conversational.
 
 Lead with the concrete development or decision giving the article a purpose. Develop one argument with connected paragraphs. Definitions should explain an event already on the page; avoid an opening inventory of acronyms, identifiers and categories.
 

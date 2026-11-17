@@ -1,42 +1,70 @@
 # Evidence to Article
 
-An agent workflow for turning a supplied research report or evidence packet into
-a Chinese explanatory article and an English blog. It combines editorial
-instructions, separate review responsibilities, and small deterministic Python
-helpers for exports and audit records.
+从研究资料到可读的中英文文章。  
+Turn a research report or evidence packet into a Chinese article and an English blog with a clear point of view and traceable claims.
 
-This repository contains reusable instructions and tools. It is not an
-autonomous backend, a hosted publishing service, or a model-training pipeline.
-An agent or person still reads the evidence, writes the articles, and performs
-the reviews.
+Evidence to Article is the reusable writing and review core. It helps an agent choose a useful angle, explain the evidence in the reader's order, preserve an appropriate authorial voice, and review the finished text independently. Organization-specific wrappers provide audience, length, brand and delivery requirements.
 
-## Two layers
+Current version: **0.2.0** · [Writing skill](skills/evidence-to-article/SKILL.md) · [Bilingual example](examples/library-hours/README.md) · [Organization profile](docs/organization-profile.template.md)
 
-1. **Generic core:** the skill's editorial workflow, language guidance, review
-   lanes, Markdown exporter, and manifest checker.
-2. **User-supplied organization profile:** the current audience, channel rules,
-   terminology, approved examples, required qualifications, and publication
-   permissions. Supply this explicitly for each run. Keep private profiles and
-   client material outside this public repository.
+## Try it
 
-Start from [the profile template](docs/organization-profile.template.md) when a
-profile is useful. The scripts do not discover or load organizational context;
-the executing agent reads the profile named in the run brief.
+Install the `skills/evidence-to-article` folder in the personal skill directory supported by your agent, or give the agent the [SKILL.md](skills/evidence-to-article/SKILL.md) URL and ask it to read the linked references as needed. Installation depends on your host application. The workflow runs in that agent; this repository does not host a writing service.
 
-## Quick start
+Attach the research or source material and use a brief like this:
 
-Python 3.9 or newer is sufficient for the helpers; there are no third-party
-Python dependencies. Place `skills/evidence-to-article` in the personal skill
-directory supported by your agent, or have the agent read
-[`SKILL.md`](skills/evidence-to-article/SKILL.md) directly. Consult that agent's
-documentation for installation details.
+```text
+Use evidence-to-article to turn the attached research into:
+- a Chinese explanatory article for non-specialist readers;
+- an English blog based on the same evidence.
 
-Give the agent the source packet, desired outputs, audience, source cutoff,
-length requirements, and any applicable profile. Ask it to use the
-`evidence-to-article` workflow. Keep the run in a separate private folder.
+Audience: [who is reading and why]
+Purpose: [the one thing the reader needs to understand]
+Length and formats: [your requirements]
+Evidence cutoff: [date]
+Voice: grounded personal — make the author's analysis visible,
+without inventing firsthand experience or strengthening the claims.
+Organization profile: [path or omit]
 
-Once the reviewed canonical Markdown drafts and real review records exist,
-these commands run from the repository root:
+Choose the angle and structure, write each language independently,
+and obtain separate readability, source/meaning and delivery reviews.
+```
+
+中文也可以直接说：
+
+> 使用 evidence-to-article，把这份研究写成中文阅读稿和英文 Blog。读者是___，需要弄清___，篇幅是___。希望作者有自己的判断、语气自然；事实、条件和归因保留。按读者的理解顺序写，不要照着研究提纲压缩。
+
+## What 0.2.0 adds
+
+[Grounded authorial voice](skills/evidence-to-article/references/authorial-voice.md) makes personality an editorial choice. Choose what deserves attention, explain why, and let the reader follow the reasoning. First person, humor and rhythm are available when they fit the genre. They are not quotas or substitutes for evidence.
+
+For example, the [invented library notice](examples/library-hours/README.md) supports this observation:
+
+> 我更在意周五多出来的这两个小时：试行时读者晚上能多待一会儿，座位却不会增加。
+
+The writer can make that comparison without claiming to have visited the library or predicting that it will be less crowded. The example is synthetic teaching material, not a real organization or a client publication.
+
+## Core, adapter and run
+
+| Layer | Responsibility | Where it belongs |
+| --- | --- | --- |
+| Evidence to Article | Angle, structure, voice, language adaptation, review and export checks | This public project |
+| Organization adapter | Audience, channel lengths, terminology, selected voice, approved samples and delivery permissions | A separate organization profile or wrapper |
+| Article run | Source packet, drafts, actual review records and deliverables | An isolated authorized work folder |
+
+Adapters should reference a tested core version and commit, not maintain a second copy of the writing engine. When a reusable method improves, update this core; when a company requirement changes, update that company's profile. The executing agent reads the supplied profile. The Python helpers do not fetch, load or apply it automatically.
+
+Use [the profile template](docs/organization-profile.template.md) to add an adapter. Private profiles, client articles, internal feedback and credentials stay outside this public repository.
+
+## Workflow
+
+The agent reads the evidence, selects an angle, writes the requested channels and obtains independent readability, source/meaning and overall/delivery reviews. It repairs specific findings before locking the article. A source ledger tracks material claims, attribution, dates, numerical measures and uncertainty.
+
+Reader feedback is recorded with its actual scope. A publication is not automatically a writing-quality benchmark; an agent approval is not proof that a reader enjoyed the article. Keep useful authorial judgment while checking whether a rewrite changed the meaning.
+
+## Export and audit helpers
+
+Python 3.9 or newer is sufficient; the helpers have no third-party Python dependencies. After the canonical Markdown and real review records exist, run from the repository root:
 
 ```bash
 python3 skills/evidence-to-article/scripts/build_outputs.py --input /path/to/private-run/article-zh.md --out-dir /path/to/private-run/outputs
@@ -45,45 +73,16 @@ python3 skills/evidence-to-article/scripts/check_run.py --manifest /path/to/priv
 python3 -m unittest discover -s tests -v
 ```
 
-Replace `/path/to/private-run` with your own run directory. Build outputs before
-completing the manifest's artifact hashes. After a draft changes, regenerate
-outputs and obtain fresh reviews for the changed bytes. The checker requires
-current, independent approvals in readability, source, and overall lanes.
+TXT preserves the canonical Markdown bytes. HTML renders a documented subset with embedded styles. The checker checks hashes, export consistency, declared length bounds, exact claim quotations, source declarations and current independent review attestations. It reports errors separately from warnings.
 
-中文快速开始：向执行代理提供原始材料、读者对象、中文和英文交付要求、资料截止日期及明确适用的机构配置，请它按照本工作流写作和复核。将每次任务的材料保存在独立的私有目录中；锁定 Markdown 文稿后，运行上述导出与检查命令。脚本核对文件、字数约定和复核记录，不能代替阅读原始证据，也不能证明事实正确。
+These scripts do not read evidence, certify factual truth, judge prose, detect AI authorship or approve publication. Word/PDF rendering and target-platform previews remain separate checks. See the [manifest contract](skills/evidence-to-article/references/manifest-contract.md) for exact conventions. The test fixtures simulate sources and review records; they are not evidence of editorial quality.
 
-## What the helpers check
+## Contributing
 
-- TXT is an exact byte copy of canonical Markdown; HTML uses a documented,
-  limited Markdown subset and embedded styles. Each build records SHA-256
-  digests and rendering warnings.
-- The manifest checker checks declared body-count bounds, file hashes, export
-  equality, exact claim quotations, critical-claim/source declarations,
-  independent review identities, current review hashes, and open blockers.
-- JSON reports separate errors from warnings. Validation errors return a
-  nonzero exit code. The two test fixtures are entirely synthetic; their source
-  reading and review records are explicitly simulated.
+A useful issue includes a short non-confidential input, the requested audience and voice, the actual output, and the passage that failed. Explain the missing reasoning or meaning change rather than assigning an AI score. Do not post client material without permission.
 
-Read the [manifest contract](skills/evidence-to-article/references/manifest-contract.md)
-for the schema, counting conventions, and supported Markdown. A source marked
-`read` or a claim marked `support` is a recorded attestation. The checker does
-not open that source, hash its contents, or establish semantic truth. It binds
-reviews to article bytes; it does not certify source versions. It does not
-grade writing, detect AI authorship, certify a rendered page count, or grant
-publication approval. Actual source review and requested document/platform
-previews remain separate work.
+The project includes an agent workflow and local utilities, not a trained model, an unattended publishing backend or a hosted application. Improvements should keep that distinction clear.
 
-## Repository contents
-
-```text
-skills/evidence-to-article/  Generic agent instructions and Python helpers
-docs/                      Empty organization-profile template
-tests/                     Portable synthetic workflow tests
-```
-
-No private profiles, client cases, publisher article text, credentials, or
-generated client deliverables belong here. `.gitignore` excludes common run and
-local-material directories, but inspect changes before committing; an ignore
-file cannot classify every sensitive file.
+If you find the workflow useful, a GitHub star or a concrete example of an improvement helps other users discover the project.
 
 MIT licensed. See [LICENSE](LICENSE).

@@ -8,6 +8,10 @@ true or that every factual claim was included.
 
 ## Build deliverables
 
+Run the commands in this reference from the `skills/evidence-to-article`
+directory, or prepend that directory to each script path when working from
+the repository root.
+
 ```bash
 python scripts/build_outputs.py --input /work/article-zh.md --out-dir /work/outputs
 python scripts/build_outputs.py --input /work/article-en.md --out-dir /work/outputs
@@ -29,6 +33,10 @@ bold/italic markers, and single-backtick inline code. Ordinary citation markers
 such as `[1]` and bare URLs remain visible. Relative links and `http`, `https`,
 and `mailto` links are allowed. Link labels can contain supported inline markup.
 HTML escaping preserves literal text rather than interpreting it as HTML.
+Relative link targets are preserved literally, not relocated when the output
+directory differs from the input directory. Verify that they resolve from the
+exported HTML location; use suitable absolute URLs or arrange authorized local
+files beside the export when needed.
 
 Nested lists, fenced/indented code, blockquotes, images, HTML tags, footnotes,
 reference definitions, horizontal rules, setext headings, and conventional
