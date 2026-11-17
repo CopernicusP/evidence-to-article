@@ -56,6 +56,8 @@ Adapters should reference a tested core version and commit, not maintain a secon
 
 Use [the profile template](docs/organization-profile.template.md) to add an adapter. Private profiles, client articles, internal feedback and credentials stay outside this public repository.
 
+For topic-to-research routing, editable channel requirements and optional podcast/video production, use the public **[Editorial Playbook](https://github.com/CopernicusP/editorial-playbook)**. It references this core rather than copying the writing engine; private organization profiles and production runs stay separate.
+
 ## Workflow
 
 The agent reads the evidence, selects an angle, writes the requested channels and obtains independent readability, source/meaning and overall/delivery reviews. It repairs specific findings before locking the article. A source ledger tracks material claims, attribution, dates, numerical measures and uncertainty.
