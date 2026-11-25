@@ -10,6 +10,78 @@ import re
 from build_outputs import body_count, render_html, sha256
 
 
+def review_time(review, field, issue):
+    value = review.get(field)
+    if isinstance(value, str):
+        try:
+            stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if stamp.tzinfo is not None:
+                return stamp
+        except ValueError:
+            pass
+    issue("review_time", f"Review {review['id']} requires an ISO-8601 {field} with timezone.")
+    return None
+
+
+def audit_criterion_reviews(article, current, outputs, issue):
+    """Check the declared assignments and sequence, not the truth of a review."""
+    article_id = article["id"]
+    required = article.get("required_criteria")
+    if (not isinstance(required, list) or not required
+            or any(not isinstance(item, str) or not item.strip() or item != item.strip()
+                   or item == "holistic" for item in required)
+            or len(set(required)) != len(required)):
+        issue("review_plan", f"Article {article_id} requires unique nonempty required_criteria; holistic is reserved.")
+        return
+
+    assignments = {}
+    owners = {}
+    specialists = []
+    for review in current:
+        criterion = review.get("criterion")
+        if criterion != "holistic" and criterion not in required:
+            issue("review_criterion", f"Review {review['id']} has no declared criterion for article {article_id}.")
+            continue
+        if criterion in assignments:
+            issue("duplicate_review", f"Article {article_id} has more than one current {criterion} review.")
+            continue
+        assignments[criterion] = review
+        reviewer = review["reviewer_id"]
+        author = article.get("author_id")
+        if reviewer != reviewer.strip() or (isinstance(author, str) and reviewer.strip() == author.strip()):
+            issue("review_identity", f"Review {review['id']} needs a distinct, unpadded reviewer ID.")
+        if reviewer in owners:
+            issue("review_independence", f"Article {article_id} assigns {owners[reviewer]} and {criterion} to {reviewer}.")
+        owners[reviewer] = criterion
+        if criterion != "holistic":
+            specialists.append(review)
+
+    for criterion in [*required, "holistic"]:
+        if criterion not in assignments:
+            issue("missing_criterion", f"Article {article_id} lacks a current approved {criterion} review.")
+
+    lanes = {review["lane"] for review in specialists}
+    for missing in sorted({"readability", "source", "overall"} - lanes):
+        issue("missing_review", f"Article {article_id} lacks a current {missing} specialist review.")
+    delivery_files = {key for review in specialists if review["lane"] == "overall"
+                      for key in review["artifact_hashes"]}
+    for missing in sorted(outputs - delivery_files):
+        issue("delivery_review", f"Article {article_id} lacks an overall specialist review bound to {missing}.")
+
+    completed = [review_time(review, "completed_at", issue) for review in specialists]
+    final = assignments.get("holistic")
+    if final is None:
+        return
+    if final["lane"] != "overall":
+        issue("review_criterion", f"Holistic review {final['id']} must use the overall lane.")
+    start = review_time(final, "started_at", issue)
+    end = review_time(final, "completed_at", issue)
+    if start and end and end < start:
+        issue("review_order", f"Holistic review {final['id']} finishes before it starts.")
+    if start and any(stamp and stamp > start for stamp in completed):
+        issue("review_order", f"Article {article_id} has a specialist sign-off after its holistic review started.")
+
+
 def audit(manifest, base):
     errors, warnings, counts = [], [], {}
 
@@ -36,8 +108,9 @@ def audit(manifest, base):
     def string(item, key):
         return isinstance(item.get(key), str) and bool(item[key].strip())
 
-    if type(manifest.get("schema_version")) is not int or manifest.get("schema_version") != 1:
-        issue("schema", "schema_version must be 1.")
+    version = manifest.get("schema_version")
+    if type(version) is not int or version not in (1, 2):
+        issue("schema", "schema_version must be 1 or 2.")
     artifacts, sources, claims, reviews = (index(name) for name in ("artifacts", "sources", "claims", "reviews"))
     contents, texts, hashes, paths = {}, {}, {}, {}
     canonical = {key: value for key, value in artifacts.items() if value.get("kind") == "article"}
@@ -161,19 +234,24 @@ def audit(manifest, base):
             elif target in texts and occurrence["quote"] not in texts[target]:
                 issue("claim_occurrence", label + " exact quote was not found in " + target + ".")
 
-    lanes = {key: set() for key in canonical}
+    current_reviews = {key: [] for key in canonical}
     for key, review in reviews.items():
         label = "Review " + key
         lane = review.get("lane")
         valid = lane in {"readability", "source", "overall"} and string(review, "reviewer_id") and review.get("decision") in {"approve", "changes_requested"}
         if not valid:
             issue("schema", label + " requires a valid lane, reviewer_id, and decision approve/changes_requested.")
+        if version == 2 and review.get("reviewer_type") not in ("agent", "human"):
+            issue("review_identity", label + " requires reviewer_type agent or human.")
+            valid = False
         if review.get("decision") == "changes_requested":
             issue("review_changes", label + " requests changes.")
         bound = review.get("artifact_hashes")
         if not isinstance(bound, dict) or not bound:
             issue("schema", label + " requires nonempty artifact_hashes keyed by artifact ID.")
             bound = {}
+        if version == 2 and not canonical.keys() & bound.keys():
+            issue("review_binding", label + " must bind the canonical article it assesses.")
         findings = review.get("findings")
         if not isinstance(findings, list):
             issue("schema", label + " requires a findings list (may be empty).")
@@ -200,11 +278,19 @@ def audit(manifest, base):
                 issue("self_review", label + " reviewer is also the author of " + artifact_id + ".")
                 continue
             if valid and review.get("decision") == "approve" and artifact_id in canonical:
-                lanes[artifact_id].add(lane)
-    for key, completed in lanes.items():
-        for missing in sorted({"readability", "source", "overall"} - completed):
-            issue("missing_review", "Article " + key + " lacks a current independent approved " + missing + " review.")
-    return {"ok": not errors, "schema_version": 1, "semantic_verification_performed": False,
+                current_reviews[artifact_id].append(review)
+    for key, current in current_reviews.items():
+        if version == 2:
+            outputs = {artifact_id for artifact_id, artifact in artifacts.items()
+                       if artifact.get("canonical_id") == key and artifact.get("kind") in ("txt", "html")}
+            audit_criterion_reviews(canonical[key], current, outputs, issue)
+        else:
+            completed = {review["lane"] for review in current}
+            for missing in sorted({"readability", "source", "overall"} - completed):
+                issue("missing_review", "Article " + key + " lacks a current independent approved " + missing + " review.")
+    contracts = {1: "legacy_lanes", 2: "independent_criteria_and_holistic"}
+    contract = contracts.get(version) if type(version) is int else None
+    return {"ok": not errors, "schema_version": version, "review_contract": contract, "semantic_verification_performed": False,
             "scope": "Deterministic files, counts, claim declarations, and review attestations only; no source reading, fact-checking, prose quality judgment, or page-count verification.",
             "body_counts": counts, "errors": errors, "warnings": warnings,
             "error_count": len(errors), "warning_count": len(warnings)}

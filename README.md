@@ -5,7 +5,7 @@ Turn a research report or evidence packet into a Chinese article and an English 
 
 Evidence to Article is the reusable writing and review core. It helps an agent choose a useful angle, explain the evidence in the reader's order, preserve an appropriate authorial voice, and review the finished text independently. Organization-specific wrappers provide audience, length, brand and delivery requirements.
 
-Current version: **0.2.0** · [Writing skill](skills/evidence-to-article/SKILL.md) · [Bilingual example](examples/library-hours/README.md) · [Organization profile](docs/organization-profile.template.md)
+Current version: **0.3.0** · [Writing skill](skills/evidence-to-article/SKILL.md) · [Bilingual example](examples/library-hours/README.md) · [Organization profile](docs/organization-profile.template.md)
 
 ## Try it
 
@@ -26,15 +26,21 @@ Voice: grounded personal — make the author's analysis visible,
 without inventing firsthand experience or strengthening the claims.
 Organization profile: [path or omit]
 
-Choose the angle and structure, write each language independently,
-and obtain separate readability, source/meaning and delivery reviews.
+Choose the angle and structure. Write each language independently and
+assign each applicable check to an independent reviewer. Have one writer integrate the findings, run the specialist rechecks, then have a fresh reviewer read the revised article end to end.
 ```
 
 中文也可以直接说：
 
 > 使用 evidence-to-article，把这份研究写成中文阅读稿和英文 Blog。读者是___，需要弄清___，篇幅是___。希望作者有自己的判断、语气自然；事实、条件和归因保留。按读者的理解顺序写，不要照着研究提纲压缩。
 
-## What 0.2.0 adds
+## What 0.3.0 adds
+
+A revision begins with the editor's actual review copy and comment anchors. Writers and reviewers now have concrete tests for which numbers earn space, what changes for a specified reader, and how the ending answers the opening. Each applicable check has a separate reviewer. After the writer integrates the corrections and specialists recheck the revision, a fresh reviewer reads the complete article for problems that only emerge across sections.
+
+New runs use manifest version 2 to record this review sequence. Version 1 remains supported for older runs. The [manifest contract](skills/evidence-to-article/references/manifest-contract.md) specifies their different guarantees.
+
+## Grounded authorial voice
 
 [Grounded authorial voice](skills/evidence-to-article/references/authorial-voice.md) makes personality an editorial choice. Choose what deserves attention, explain why, and let the reader follow the reasoning. First person, humor and rhythm are available when they fit the genre. They are not quotas or substitutes for evidence.
 
@@ -60,7 +66,7 @@ For topic-to-research routing, editable channel requirements and optional podcas
 
 ## Workflow
 
-The agent reads the evidence, selects an angle, writes the requested channels and obtains independent readability, source/meaning and overall/delivery reviews. It repairs specific findings before locking the article. A source ledger tracks material claims, attribution, dates, numerical measures and uncertainty.
+The agent reads the evidence, selects an angle, writes the requested channels and assigns the required checks to independent specialists. One writer incorporates their findings. After specialist rechecks, a separate reviewer reads the complete revision before handoff. A source ledger tracks material claims, attribution, dates, numerical measures and uncertainty.
 
 Reader feedback is recorded with its actual scope. A publication is not automatically a writing-quality benchmark; an agent approval is not proof that a reader enjoyed the article. Keep useful authorial judgment while checking whether a rewrite changed the meaning.
 
@@ -75,7 +81,7 @@ python3 skills/evidence-to-article/scripts/check_run.py --manifest /path/to/priv
 python3 -m unittest discover -s tests -v
 ```
 
-TXT preserves the canonical Markdown bytes. HTML renders a documented subset with embedded styles. The checker checks hashes, export consistency, declared length bounds, exact claim quotations, source declarations and current independent review attestations. It reports errors separately from warnings.
+TXT preserves the canonical Markdown bytes. HTML renders a documented subset with embedded styles. The checker validates hashes, export consistency, declared length bounds, exact claim quotations, source declarations and current review attestations for the selected manifest version. It reports errors separately from warnings.
 
 These scripts do not read evidence, certify factual truth, judge prose, detect AI authorship or approve publication. Word/PDF rendering and target-platform previews remain separate checks. See the [manifest contract](skills/evidence-to-article/references/manifest-contract.md) for exact conventions. The test fixtures simulate sources and review records; they are not evidence of editorial quality.
 

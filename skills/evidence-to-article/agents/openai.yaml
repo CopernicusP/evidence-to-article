@@ -1,4 +1,4 @@
 interface:
   display_name: "Evidence to Article"
   short_description: "Turn research into reliable Chinese and English articles"
-  default_prompt: "Use $evidence-to-article to turn this source into a readable Chinese article and an English blog with verified claims."
+  default_prompt: "Use $evidence-to-article to turn this source into a readable Chinese article and an English blog. Assign the applicable checks to independent reviewers, repair the articles, then have a fresh reviewer read each revised article."

@@ -49,12 +49,11 @@ the subset. Inspect warnings and the rendered HTML before approval. No warning
 licenses a missing citation or a change in meaning. Use ordinary paragraphs or
 basic links to resolve unsupported syntax, then have the revised draft reviewed.
 
-## Manifest schema, version 1
+## Manifest versions
 
 Run `python scripts/check_run.py --manifest /work/run.json`. Paths in a manifest
 are relative to that manifest's directory, or absolute. All named files use
-UTF-8 without a byte-order mark. The top-level object has `schema_version: 1`
-and four arrays: `artifacts`, `sources`, `claims`, and `reviews`. Each array uses
+UTF-8 without a byte-order mark. New runs use `schema_version: 2`. Existing version 1 records remain valid under their original contract. The top-level object includes the version and four arrays: `artifacts`, `sources`, `claims`, and `reviews`. Each array uses
 unique nonempty string `id` values. Unknown extra keys are allowed for notes.
 
 ### Artifacts
@@ -104,7 +103,7 @@ the source reviewer must confirm that qualifications and omissions are adequate,
 or enter a blocker. An empty claim list produces a coverage warning. Never
 change `status` merely to make the script pass.
 
-### Reviews
+### Review records common to both versions
 
 Each review has `id`, `lane` (`readability`, `source`, or `overall`), `reviewer_id`,
 `decision` (`approve` or `changes_requested`), `artifact_hashes` (an object from
@@ -114,7 +113,7 @@ and `status` (`open` or `resolved`). Add optional IDs/evidence/resolution notes 
 useful. An open blocker or a changes-requested decision fails the run; other
 open findings produce warnings that must be read.
 
-Each canonical article needs an approved review in all three lanes, bound to
+**Version 1 (legacy).** Each canonical article needs an approved review in all three lanes, bound to
 its current file hash, by a reviewer different from that article's author.
 One review may bind multiple artifacts. Lanes are separate responsibilities;
 the checker does not enforce different people across lanes. Role identities
@@ -125,9 +124,28 @@ approval without actually reviewing the revised draft.
 The manifest contains active reviews only. Replace superseded attestations in
 this run and keep their history separately; any stale review listed here fails.
 
-### Minimal shape example
+### Version 2 independent reviews and whole-article read
 
-The example below illustrates fields only. Replace the digest placeholders and
+For each canonical article, add `required_criteria`, a nonempty array of unique, nonblank criterion names derived from the brief, without surrounding whitespace. Use consistent reviewer IDs without surrounding whitespace. Reserve `holistic` for the later whole-article review. As examples, `readability`, `source_meaning` and `delivery` address the base checks. Add `number_relevance`, `reader_implications`, `closing_synthesis`, `comment_closure` or other distinct requirements when the material calls for them. Record genuinely inapplicable criteria in the brief. The checker cannot infer the right scope from the prose.
+
+Version 2 extends the shared review record with the following fields.
+
+| Field | Applies to | Value |
+| --- | --- | --- |
+| `criterion` | Every review | One declared criterion or the reserved `holistic` |
+| `reviewer_type` | Every review | `agent` or `human`, according to who actually inspected the artifact |
+| `completed_at` | Every review | Timezone-aware ISO 8601 completion time |
+| `started_at` | The `holistic` review | Timezone-aware ISO 8601 start time for the complete final read |
+
+Provide exactly one current specialist approval for each declared criterion. Use distinct reviewer identities for the active criteria of the same article. Its author cannot approve any review, and its final reviewer must be distinct from all its specialists. Every review applies to the exact current canonical bytes. Across the specialist records, cover all three existing lane families. Place delivery checks in `overall` and bind the actual TXT and HTML hashes as well as the canonical article. Multiple delivery specialists may cover the two exports between them. The final reviewer separately uses `lane: overall` and `criterion: holistic`.
+
+For example, a read of an exported article with the three base checks needs four independent reviewers. If numerical relevance is a separate criterion, its reviewer can share the `readability` lane name while retaining their own criterion and identity. The whole read begins on or after every specialist's recorded completion and must end on or after it starts. If feedback causes an edit, the designated writer revises, regenerates outputs and obtains current specialist rechecks before the final read begins again. Keep superseded reviews and the actual resolution history outside the active snapshot.
+
+A passing v2 audit verifies the declared coverage, identities, hashes and recorded ordering. It cannot establish who actually read a passage, what the writer did between revisions, whether the chosen criteria were complete, or whether publication was authorized. Record actual human reading and approval separately. Mechanical file checks can supply evidence to a reviewer.
+
+### Legacy minimal shape example
+
+The version 1 example below illustrates legacy fields only. Use the additional fields and independent assignments above for a new version 2 run. Replace the digest placeholders and
 the evidence/claim/review declarations with actual work. Copy the review object
 for the `source` and `overall` lanes after those reviews occur. A bilingual run
 adds the English article and its outputs, claim occurrences, and three reviews.
@@ -154,8 +172,7 @@ adds the English article and its outputs, claim occurrences, and three reviews.
 
 ## Audit results
 
-The checker prints a JSON report with `ok`, `body_counts`, `errors`, `warnings`,
-their counts, and `semantic_verification_performed: false`. Exit code `0` means
+The checker prints a JSON report with `ok`, `schema_version`, `review_contract`, `body_counts`, `errors`, `warnings`, their counts, and `semantic_verification_performed: false`. The review contract is `legacy_lanes` for version 1 and `independent_criteria_and_holistic` for version 2. Exit code `0` means
 no deterministic errors; `1` means a validation/file/rendering error. Invalid
 CLI arguments use argparse's usual exit code `2`. Errors include missing files,
 wrong artifact hashes, stale or self-authored reviews, missing lanes, unsupported

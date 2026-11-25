@@ -5,14 +5,15 @@ description: Turn a research report, source article, filing or evidence packet i
 
 # Evidence to Article
 
-Version: 0.2.0. Produce complete drafts and traceable review results. Treat this as an agent-executed workflow with deterministic helpers, not an unattended service or a model trained on the user's conversations.
+Version: 0.3.0. Produce complete drafts and traceable review results. Treat this as an agent-executed workflow with deterministic helpers, not an unattended service or a model trained on the user's conversations.
 
 ## Establish this run
 
 1. Read the supplied source and requested outputs. Use an existing verified research packet; investigate only material gaps. Do not silently launch a new deep research report when the task is adaptation.
 2. Freeze a run brief: audience, editorial question, cutoff date, language/output formats, length/counting method, selected profile and version, input identities and source access, and relevant editorial feedback. Read only the current profile and one or two relevant style cards. Keep other clients, episodes and chat preferences out of this run unless the user explicitly makes them applicable.
 3. Resolve instructions in this order: current user task, applicable organization/profile requirements, this workflow, style examples. A sample cannot override a required legal qualifier or supply facts. Resolve routine choices from evidence and purpose, escalating only a consequential unresolved ambiguity.
-4. Keep run materials separate from reusable rules. Record which rule/version produced the draft. Do not treat every editor's one-off comment as a global style change. Propose a scoped reusable rule with an example; label its actual approval status.
+4. For editor-led revisions, open the exact review copy, locate each comment and reply at its anchor, and inspect tracked revisions when present. Record the inspected version. If that copy is inaccessible, identify the outstanding feedback and label any separate editorial improvements as such. A clean attachment with zero comments establishes only what was in that attachment.
+5. Keep run materials separate from reusable rules. Record which rule/version produced the draft. Do not treat every editor's one-off comment as a global style change. Propose a scoped reusable rule with an example; label its actual approval status.
 
 Use an isolated run folder outside the skill. Do not publish, message people, alter sharing or upload company material to a new service merely to complete an editorial step. Follow the user's authorized destination and environment.
 
@@ -30,6 +31,8 @@ Select a supported reader question and argument. Where viable alternatives exist
 
 For each section, identify what the reader learns that the previous section did not establish. Organize a causal chain, timeline, transaction, contrast or verification sequence appropriate to the material; do not impose one universal structure. Put definitions where they resolve an actual difficulty. Remove redundant conclusions and unrelated background; preserve qualifications and counterexamples that determine meaning.
 
+On a passage with several figures, test what the reader would lose by removing each one. Keep baselines, denominators, periods and thresholds that change the conclusion. Where a rule or mechanism has practical effects, name the affected reader and the decision or option it changes, with its limits. Reread the lead beside the last paragraph. Let the ending answer the opening question with the findings already established. See [editorial-decisions.md](references/editorial-decisions.md) for worked examples and exceptions.
+
 Compose Chinese and English independently from the same claim set. Read [references/channels.md](references/channels.md) for distinct language requirements. Do not translate paragraph boundaries mechanically. Use a concrete sourced action or document when there is no reported human scene. Prefer verbs with actors over strings of abstract nouns.
 
 Use [references/authorial-voice.md](references/authorial-voice.md) when the task calls for a more personal, engaging or less institutional article. Select a voice from the task or profile; let evidence support visible editorial judgment without inventing experience. Do not mistake a warm voice for stronger factual certainty, or neutral prose for an automatic quality standard.
@@ -38,15 +41,14 @@ Use one or two applicable techniques from [references/style-cards.md](references
 
 ## Review and repair independently
 
-Delegate review when fresh agents are available. Give reviewers the current artifacts, brief and raw source locations, without the writer's intended verdict. Keep writer and reviewer roles distinct. If separate agents are unavailable, conduct separate passes with the same honest identity and deliver only a limited-review draft. Those passes do not satisfy the checker's independent-review requirement: record the missing lane or failed check, state the limitation, and never invent another reviewer identity to obtain a pass.
+The lead editor selects each independently testable acceptance criterion from the brief, channel, feedback and [editorial rubric](references/editorial-decisions.md). Assign one distinct reviewer to each applicable criterion. For an article and its exports, include readability, source accuracy and meaning, and delivery integrity. Select additional criteria such as numerical relevance, practical consequences for the specified reader, closing synthesis, comment closure or cross-language agreement when the task calls for them. Subquestions with the same evidence and decision can belong to one criterion. If capacity is limited, schedule separate reviewers in batches.
 
-Use three lanes:
+1. Give each specialist the current complete artifact, their one assigned question, the brief and relevant original evidence or outputs. Ask for a decision, exact passage or location, rationale and any specific repair. Reviewers advise the writer separately. Preserve actual identities and versions.
+2. One designated writer integrates the findings into one working copy. Resolve conflicting advice against the evidence and the brief. Record what changed or why wording was retained. Rebuild affected exports. For the new bytes, each affected specialist rechecks the changed passages and their context. Other specialists examine the differences for effects on their own criterion before renewing their attestations.
+3. After integration and specialist rechecks, assign a new reviewer who neither wrote the artifact nor owned a specialist check. Give them the full revised work, original brief and necessary evidence. Ask them to read it end to end before consulting the change notes. Check for cross-section contradictions, lost premises, repeated arguments and a conclusion the revised body no longer supports.
+4. If the whole-artifact reviewer returns a problem, the same writer repairs it, the affected specialists recheck it, and the final reviewer reads the complete updated version again. The lead editor records the actual decision and current file hashes for every active criterion and the final read. A final review that requests changes remains open until that cycle is complete. If two attempts fail at the same issue, change the approach or report the specific remaining defect.
 
-- Readability: reconstruct the argument from lead/headings, then locate repetition, missing steps, unexplained terms, stilted language and unsupported narrative. Check whether the selected voice helps the reader follow the reasoning, whether the author actually prioritizes evidence, and whether direct address sounds patronizing. Separate reader preference feedback from an agent's editorial judgment. Supply exact passages and reasons, not an AI-detector or self-assigned quality score.
-- Source/meaning: actually read evidence; check actors, numbers and their measures, dates, attribution, legal status, negation, conditions and causal strength. Compare matching claims across languages. Inspect new claims introduced during editing.
-- Overall/delivery: reconcile feedback, length, file versions, links and exported text; inspect required rendered documents. Recheck changes affecting prior approvals. Distinguish a rendered-page check, a platform preview and a human editorial approval.
-
-Repair concrete findings, then have the affected lane review the new artifact. Bind the review to the exact artifact hash. An old approval cannot approve changed text. Stop an unproductive repair loop after two failed attempts at the same issue: change the approach or deliver the specific unresolved item and its effect, rather than repeatedly declaring improvement.
+For new machine-audited runs, use manifest version 2. A legacy version 1 pass has narrower review checks. When independent reviewers are unavailable, complete the supported work and record exactly which checks were self-checks or remain open. Keep any actual human read, the version read and publication approval separate from agent decisions.
 
 Do not insert generic “needs human polishing” gates. Complete supported editorial choices automatically. Ask only when an unresolved choice of audience/stance/brand purpose changes the task, essential unavailable evidence prevents the requested article, or required access/approval is genuinely missing. Continue independent work. Preserve a real organization's publication approval requirement without turning it into permission requests for each paragraph. Never label agent work as human review.
 

@@ -123,6 +123,33 @@ def make_simulated_fixture(directory):
     return manifest
 
 
+def with_criterion_reviews(legacy):
+    manifest = copy.deepcopy(legacy)
+    manifest["schema_version"] = 2
+    manifest["reviews"] = []
+    for article in manifest["artifacts"]:
+        if article["kind"] != "article":
+            continue
+        criteria = {"understanding": "readability", "reader_decision": "readability",
+                    "evidence": "source", "format": "overall"}
+        article["required_criteria"] = list(criteria)
+        for criterion, lane in {**criteria, "holistic": "overall"}.items():
+            review = {
+                "id": article["id"] + "-" + criterion, "lane": lane, "criterion": criterion,
+                "reviewer_id": "simulated-" + criterion, "reviewer_type": "agent", "decision": "approve",
+                "artifact_hashes": {article["id"]: article["sha256"]}, "findings": [],
+                "completed_at": "2000-01-01T09:00:00Z",
+            }
+            if criterion == "format":
+                for output in manifest["artifacts"]:
+                    if output.get("canonical_id") == article["id"]:
+                        review["artifact_hashes"][output["id"]] = output["sha256"]
+            if criterion == "holistic":
+                review.update(reviewer_type="human", started_at="2000-01-01T09:10:00Z", completed_at="2000-01-01T09:30:00Z")
+            manifest["reviews"].append(review)
+    return manifest
+
+
 class WorkflowTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="evidence-to-article-test-")
@@ -135,6 +162,7 @@ class WorkflowTests(unittest.TestCase):
         code, report = run_cli("check_run.py", "--manifest", self.valid / "run.json")
         self.assertEqual(code, 0, report)
         self.assertTrue(report["ok"])
+        self.assertEqual(report["review_contract"], "legacy_lanes")
         self.assertEqual(report["warnings"], [])
         self.assertFalse(report["semantic_verification_performed"])
         for language in ARTICLES:
@@ -147,6 +175,72 @@ class WorkflowTests(unittest.TestCase):
             self.assertIn('href="evidence.md"', page.read_text(encoding="utf-8"))
             for entry in metadata["artifacts"]:
                 self.assertEqual(entry["sha256"], digest(Path(entry["path"])))
+
+    def test_v2_declared_criteria_and_final_read(self):
+        manifest = with_criterion_reviews(self.manifest)
+        # Row order has no editorial meaning. Compare the recorded instants.
+        manifest["reviews"].reverse()
+        code, report = run_cli("check_run.py", "--manifest", write_manifest(self.valid, manifest))
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["review_contract"], "independent_criteria_and_holistic")
+        self.assertFalse(report["semantic_verification_performed"])
+
+    def test_v2_rejects_missing_criteria_unrelated_extras_and_reused_reviewers(self):
+        cases = [
+            ("missing criterion", "missing_criterion", lambda m, r: m["reviews"].remove(r["reader_decision"])),
+            ("undeclared criterion", "review_criterion", lambda m, r: r["reader_decision"].update(criterion="spare")),
+            ("ambiguous plan", "review_plan", lambda m, r: m["artifacts"][0]["required_criteria"].append("understanding")),
+            ("reserved criterion", "review_plan", lambda m, r: m["artifacts"][0]["required_criteria"].append("holistic")),
+            ("duplicate approval", "duplicate_review", lambda m, r: m["reviews"].append(dict(r["evidence"], id="additional"))),
+            ("same specialist", "review_independence", lambda m, r: r["evidence"].update(reviewer_id=r["format"]["reviewer_id"])),
+            ("reused specialist as final reader", "review_independence", lambda m, r: r["holistic"].update(reviewer_id=r["reader_decision"]["reviewer_id"])),
+            ("author as final reader", "self_review", lambda m, r: r["holistic"].update(reviewer_id="simulated-writer-en")),
+            ("unrecorded reader type", "review_identity", lambda m, r: r["evidence"].pop("reviewer_type")),
+            ("tool as final reader", "review_identity", lambda m, r: r["holistic"].update(reviewer_type="script")),
+            ("no final read", "missing_criterion", lambda m, r: m["reviews"].remove(r["holistic"])),
+            ("no delivery specialist", "missing_review", lambda m, r: r["format"].update(lane="readability")),
+            ("unbound export", "delivery_review", lambda m, r: r["format"]["artifact_hashes"].pop("en-html")),
+            ("no article binding", "review_binding", lambda m, r: r["format"]["artifact_hashes"].pop("en-md")),
+            ("wrong final lane", "review_criterion", lambda m, r: r["holistic"].update(lane="source")),
+            ("missing timestamp", "review_time", lambda m, r: r["understanding"].pop("completed_at")),
+            ("no timezone", "review_time", lambda m, r: r["holistic"].update(started_at="2000-01-01T09:10:00")),
+            ("overlapping final", "review_order", lambda m, r: r["holistic"].update(started_at="2000-01-01T09:10:00+01:00")),
+            ("negative duration", "review_order", lambda m, r: r["holistic"].update(completed_at="2000-01-01T09:05:00Z")),
+        ]
+        for name, expected, edit in cases:
+            with self.subTest(name=name):
+                manifest = with_criterion_reviews(self.manifest)
+                reviews = {r["criterion"]: r for r in manifest["reviews"] if "en-md" in r["artifact_hashes"]}
+                edit(manifest, reviews)
+                result = audit(manifest, self.valid)
+                self.assertFalse(result["ok"])
+                self.assertIn(expected, [error["code"] for error in result["errors"]])
+
+    def test_v2_after_return_requires_fresh_specialists_and_whole_read(self):
+        manifest = with_criterion_reviews(self.manifest)
+        reviews = [r for r in manifest["reviews"] if "en-md" in r["artifact_hashes"]]
+        final = next(r for r in reviews if r["criterion"] == "holistic")
+        final["decision"] = "changes_requested"
+        self.assertIn("review_changes", [e["code"] for e in audit(manifest, self.valid)["errors"]])
+
+        source = self.valid / "article-en.md"
+        source.write_text(source.read_text(encoding="utf-8").replace("An interview note", "An interview record"), encoding="utf-8")
+        code, _ = run_cli("build_outputs.py", "--input", source, "--out-dir", self.valid / "outputs")
+        self.assertEqual(code, 0)
+        for artifact in manifest["artifacts"]:
+            artifact["sha256"] = digest(self.valid / artifact["path"])
+        hashes = {a["id"]: a["sha256"] for a in manifest["artifacts"]}
+        self.assertIn("stale_review", [e["code"] for e in audit(manifest, self.valid)["errors"]])
+        for review in reviews:
+            if review is not final:
+                review["artifact_hashes"] = {key: hashes[key] for key in review["artifact_hashes"]}
+                review["completed_at"] = "2000-01-01T10:00:00Z"
+        self.assertIn("stale_review", [e["code"] for e in audit(manifest, self.valid)["errors"]])
+        final.update(decision="approve", artifact_hashes={"en-md": hashes["en-md"]})
+        self.assertIn("review_order", [e["code"] for e in audit(manifest, self.valid)["errors"]])
+        final.update(started_at="2000-01-01T10:05:00Z", completed_at="2000-01-01T10:20:00Z")
+        self.assertTrue(audit(manifest, self.valid)["ok"])
 
     def test_invalid_fixture_rejects_stale_reviews_claims_and_output_drift(self):
         invalid = self.root / "invalid"

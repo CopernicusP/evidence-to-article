@@ -22,8 +22,8 @@ scripts do not load it automatically.
   of inaccessible or conflicting evidence.
 - **Approved examples:** private locators, exact approval scope, and the
   technique to learn. An example is not evidence for a new article's claims.
-- **Review and publication:** real reviewer roles, required checks, authorized
-  delivery destination, and any actual publication approval requirement.
+- **Revision input:** how to identify the editor's reviewed version and locate its comments. Record unavailable feedback separately from independently proposed edits.
+- **Review and publication:** which criteria apply to this channel, what evidence reviewers need, and which output formats they inspect. Assign each active criterion its own reviewer and a separate reviewer to the revised whole article. Record actual human reading and publication approvals with their version and authorized delivery destination.
 - **Exclusions:** other clients, channels, past episodes, or one-off preferences
   that must not influence this run.
 

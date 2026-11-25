@@ -11,6 +11,20 @@ Use these as tests of a passage or decision, not mandatory headings in the publi
 | Verify facts and meaning | Read original evidence independently, calculate where relevant and compare shared claims in both languages | Source accessed, date, locator, claim support and cross-language finding | Correct, qualify to the actual evidence, remove or obtain better support | Evidence cannot settle a material question; ask about scope, never ask a person to certify an unsupported fact |
 | Finish files | Export locked text; measure length by agreed method; inspect actual render | Hashes, counts, equivalent text and links, render observations, unresolved findings | Fix formatting/export drift, then recheck affected artifacts | Required platform access is unavailable or conflicting specifications need a decision |
 
+## Work from the reviewed copy
+
+Follow the editor's file reference and identify the version. Inspect its comments, replies, anchors and tracked revisions when present. If comments were supplied as screenshots, record the visible anchor and any missing surrounding text. For each actionable note, identify the problem, make the smallest sufficient repair and reread the changed passage in context. An ambiguous anchor stays open until the intended passage can be identified. If another copy is accessible, say which one was inspected and distinguish independent improvements from responses to unseen feedback.
+
+## Test the reader's answer
+
+| Criterion | Question for its reviewer | Example using the synthetic library notice |
+| --- | --- | --- |
+| Numerical relevance | Which figures establish the comparison, period, threshold, scale or exception behind the conclusion? Try removing each one. Move optional detail to notes when appropriate to the genre. Preserve complete detail where the requested format depends on it. | The old and new Friday closing times show the two additional hours. The four-week duration matters to a reader deciding whether the change is permanent. |
+| Practical consequence | Who gains or loses an option, what can that reader now do, and what condition still applies? Check the evidence before inferring an action or result. | A reader could visit later on Fridays during the trial. The unchanged seating leaves the chance of finding a seat uncertain. |
+| Closing synthesis | Read the opening question and the ending together. Which earlier findings does the last paragraph join to answer the question? Include a future observation only when it would change that answer. | If the article asks whether evening access improves, close with the additional time and the unchanged seating. A generic promise to follow future updates leaves the answer unfinished. |
+
+These questions can lead to different decisions about the same sentence. Accuracy alone cannot establish that a number belongs in the body. A procedural detail may be correct while leaving the reader's choices unexplained. Choose the closing perspective that fits the brief. The library example is fictional. Its source describes an approved four-week trial, a shift in Friday closing from six to eight, no change in seating, and no measurements of crowding.
+
 ## Preserve meaning during editing
 
 For each changed material statement, compare actor and role; action; object or population; amount/unit/denominator/period; date versus as-of state; attribution; allegation versus finding; modal/negation; conditions; correlation versus cause. Check the surrounding paragraph. A sentence can preserve every number while changing what those numbers mean.
