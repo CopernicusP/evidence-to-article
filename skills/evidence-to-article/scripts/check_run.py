@@ -24,7 +24,7 @@ def review_time(review, field, issue):
 
 
 def audit_criterion_reviews(article, current, outputs, issue):
-    """Check the declared assignments and sequence, not the truth of a review."""
+    """Check coverage of the declared criteria and exports for one article."""
     article_id = article["id"]
     required = article.get("required_criteria")
     if (not isinstance(required, list) or not required
@@ -35,7 +35,6 @@ def audit_criterion_reviews(article, current, outputs, issue):
         return
 
     assignments = {}
-    owners = {}
     specialists = []
     for review in current:
         criterion = review.get("criterion")
@@ -46,13 +45,6 @@ def audit_criterion_reviews(article, current, outputs, issue):
             issue("duplicate_review", f"Article {article_id} has more than one current {criterion} review.")
             continue
         assignments[criterion] = review
-        reviewer = review["reviewer_id"]
-        author = article.get("author_id")
-        if reviewer != reviewer.strip() or (isinstance(author, str) and reviewer.strip() == author.strip()):
-            issue("review_identity", f"Review {review['id']} needs a distinct, unpadded reviewer ID.")
-        if reviewer in owners:
-            issue("review_independence", f"Article {article_id} assigns {owners[reviewer]} and {criterion} to {reviewer}.")
-        owners[reviewer] = criterion
         if criterion != "holistic":
             specialists.append(review)
 
@@ -68,18 +60,57 @@ def audit_criterion_reviews(article, current, outputs, issue):
     for missing in sorted(outputs - delivery_files):
         issue("delivery_review", f"Article {article_id} lacks an overall specialist review bound to {missing}.")
 
-    completed = [review_time(review, "completed_at", issue) for review in specialists]
-    final = assignments.get("holistic")
-    if final is None:
-        return
-    if final["lane"] != "overall":
-        issue("review_criterion", f"Holistic review {final['id']} must use the overall lane.")
-    start = review_time(final, "started_at", issue)
-    end = review_time(final, "completed_at", issue)
-    if start and end and end < start:
-        issue("review_order", f"Holistic review {final['id']} finishes before it starts.")
-    if start and any(stamp and stamp > start for stamp in completed):
-        issue("review_order", f"Article {article_id} has a specialist sign-off after its holistic review started.")
+
+def audit_review_team(manifest, canonical, current_reviews, issue):
+    """Check reviewer independence and the last specialist sign-off across the package."""
+    writers = {article["author_id"].strip() for article in canonical.values()
+               if isinstance(article.get("author_id"), str)}
+    if "integrator_id" in manifest:
+        integrator = manifest["integrator_id"]
+        if not isinstance(integrator, str) or not integrator or integrator != integrator.strip():
+            issue("review_identity", "integrator_id must be a nonempty, unpadded writer ID.")
+        else:
+            writers.add(integrator)
+    elif len(writers) > 1:
+        issue("review_identity", "Name one integrator_id for a run with multiple canonical authors.")
+
+    # A review can bind several language versions. Check its identity and time once.
+    active = {review["id"]: review for group in current_reviews.values() for review in group}
+    assignments = {}
+    specialist_finishes = []
+    final_starts = []
+    holistic_reader = None
+    for review in active.values():
+        reviewer = review["reviewer_id"]
+        criterion = review.get("criterion")
+        if not isinstance(criterion, str):
+            continue  # Article coverage reports undeclared or missing criteria.
+        if reviewer != reviewer.strip() or reviewer.strip() in writers:
+            issue("review_identity", f"Review {review['id']} needs an unpadded reviewer ID independent of all writers.")
+        role = (criterion, review["reviewer_type"])
+        if reviewer in assignments and assignments[reviewer] != role:
+            issue("review_independence", f"{reviewer} has conflicting criteria or reviewer types in this run.")
+        assignments[reviewer] = role
+
+        end = review_time(review, "completed_at", issue)
+        if criterion == "holistic":
+            if holistic_reader is not None and reviewer != holistic_reader:
+                issue("review_independence", "Use one holistic reviewer for the complete editorial package.")
+            holistic_reader = reviewer
+            if review["lane"] != "overall":
+                issue("review_criterion", f"Holistic review {review['id']} must use the overall lane.")
+            start = review_time(review, "started_at", issue)
+            if start and end and end < start:
+                issue("review_order", f"Holistic review {review['id']} finishes before it starts.")
+            if start:
+                final_starts.append((review["id"], start))
+        elif end:
+            specialist_finishes.append(end)
+
+    last_specialist = max(specialist_finishes, default=None)
+    for review_id, start in final_starts:
+        if last_specialist and start < last_specialist:
+            issue("review_order", f"Holistic review {review_id} started before all specialists completed this run.")
 
 
 def audit(manifest, base):
@@ -279,6 +310,8 @@ def audit(manifest, base):
                 continue
             if valid and review.get("decision") == "approve" and artifact_id in canonical:
                 current_reviews[artifact_id].append(review)
+    if version == 2:
+        audit_review_team(manifest, canonical, current_reviews, issue)
     for key, current in current_reviews.items():
         if version == 2:
             outputs = {artifact_id for artifact_id, artifact in artifacts.items()

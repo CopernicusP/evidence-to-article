@@ -126,6 +126,7 @@ def make_simulated_fixture(directory):
 def with_criterion_reviews(legacy):
     manifest = copy.deepcopy(legacy)
     manifest["schema_version"] = 2
+    manifest["integrator_id"] = "simulated-integrating-writer"
     manifest["reviews"] = []
     for article in manifest["artifacts"]:
         if article["kind"] != "article":
@@ -240,7 +241,59 @@ class WorkflowTests(unittest.TestCase):
         final.update(decision="approve", artifact_hashes={"en-md": hashes["en-md"]})
         self.assertIn("review_order", [e["code"] for e in audit(manifest, self.valid)["errors"]])
         final.update(started_at="2000-01-01T10:05:00Z", completed_at="2000-01-01T10:20:00Z")
+        self.assertIn("review_order", [e["code"] for e in audit(manifest, self.valid)["errors"]])
+        other_final = next(r for r in manifest["reviews"] if r["id"] == "zh-md-holistic")
+        other_final.update(started_at=final["started_at"], completed_at=final["completed_at"])
         self.assertTrue(audit(manifest, self.valid)["ok"])
+
+    def test_v2_one_integrator_and_one_holistic_reader_for_the_package(self):
+        manifest = with_criterion_reviews(self.manifest)
+        reviews = {r["id"]: r for r in manifest["reviews"]}
+        # Different specialists can own the same criterion on different translations.
+        reviews["zh-md-evidence"]["reviewer_id"] = "simulated-other-source-reader"
+        self.assertTrue(audit(manifest, self.valid)["ok"])
+
+        # A single whole-package decision may bind both actual canonical files.
+        english_final = reviews["en-md-holistic"]
+        chinese_final = reviews["zh-md-holistic"]
+        english_final["artifact_hashes"].update(chinese_final["artifact_hashes"])
+        manifest["reviews"].remove(chinese_final)
+        self.assertTrue(audit(manifest, self.valid)["ok"])
+
+        del manifest["integrator_id"]
+        self.assertIn("review_identity", [e["code"] for e in audit(manifest, self.valid)["errors"]])
+        for artifact in manifest["artifacts"]:
+            artifact["author_id"] = "simulated-single-writer"
+        self.assertTrue(audit(manifest, self.valid)["ok"])
+        manifest["integrator_id"] = " "
+        self.assertIn("review_identity", [e["code"] for e in audit(manifest, self.valid)["errors"]])
+
+    def test_v2_cross_language_conflicts(self):
+        cases = [
+            ("two holistic readers", "zh-md-holistic", "reviewer_id", "second-final-reader", "review_independence"),
+            ("number reviewer takes reader implication", "zh-md-reader_decision", "reviewer_id", "en-number-reader", "review_independence"),
+            ("source reviewer takes holistic read", "zh-md-holistic", "reviewer_id", "en-source-reader", "review_independence"),
+            ("other-language writer as final", "zh-md-holistic", "reviewer_id", "simulated-writer-en", "review_identity"),
+            ("other-language writer as specialist", "zh-md-format", "reviewer_id", "simulated-writer-en", "review_identity"),
+            ("integrator as final", "zh-md-holistic", "reviewer_id", "simulated-integrating-writer", "review_identity"),
+            ("integrator as specialist", "en-md-evidence", "reviewer_id", "simulated-integrating-writer", "review_identity"),
+            ("specialist changes identity type", "zh-md-format", "reviewer_type", "human", "review_independence"),
+            ("other language not ready when final began", "zh-md-evidence", "completed_at", "2000-01-01T09:15:00Z", "review_order"),
+        ]
+        for name, review_id, field, value, expected in cases:
+            with self.subTest(case=name):
+                manifest = with_criterion_reviews(self.manifest)
+                reviews = {r["id"]: r for r in manifest["reviews"]}
+                english = manifest["artifacts"][0]
+                english["required_criteria"].remove("understanding")
+                english["required_criteria"].append("number_relevance")
+                reviews["en-md-understanding"].update(criterion="number_relevance", reviewer_id="en-number-reader")
+                reviews["en-md-evidence"]["reviewer_id"] = "en-source-reader"
+                reviews["zh-md-holistic"].update(started_at="2000-01-01T09:20:00Z")
+                self.assertTrue(audit(manifest, self.valid)["ok"])
+                reviews[review_id][field] = value
+                result = audit(manifest, self.valid)
+                self.assertIn(expected, [error["code"] for error in result["errors"]])
 
     def test_invalid_fixture_rejects_stale_reviews_claims_and_output_drift(self):
         invalid = self.root / "invalid"

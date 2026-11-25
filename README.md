@@ -36,7 +36,7 @@ assign each applicable check to an independent reviewer. Have one writer integra
 
 ## What 0.3.0 adds
 
-A revision begins with the editor's actual review copy and comment anchors. Writers and reviewers now have concrete tests for which numbers earn space, what changes for a specified reader, and how the ending answers the opening. Each applicable check has a separate reviewer. After the writer integrates the corrections and specialists recheck the revision, a fresh reviewer reads the complete article for problems that only emerge across sections.
+A revision begins with the editor's actual review copy and comment anchors. Writers and reviewers now have concrete tests for which numbers earn space, what changes for a specified reader, and how the ending answers the opening. Each applicable check has a separate reviewer. Reviewers can cover the same criterion across languages. After one writer integrates the corrections and all specialists recheck the revision, one fresh reviewer reads every article in the shared brief for problems that only emerge across sections or languages.
 
 New runs use manifest version 2 to record this review sequence. Version 1 remains supported for older runs. The [manifest contract](skills/evidence-to-article/references/manifest-contract.md) specifies their different guarantees.
 
