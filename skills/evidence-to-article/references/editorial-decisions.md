@@ -19,11 +19,21 @@ Follow the editor's file reference and identify the version. Inspect its comment
 
 | Criterion | Question for its reviewer | Example using the synthetic library notice |
 | --- | --- | --- |
-| Numerical relevance | Which figures establish the comparison, period, threshold, scale or exception behind the conclusion? Try removing each one. Move optional detail to notes when appropriate to the genre. Preserve complete detail where the requested format depends on it. | The old and new Friday closing times show the two additional hours. The four-week duration matters to a reader deciding whether the change is permanent. |
-| Practical consequence | Who gains or loses an option, what can that reader now do, and what condition still applies? Check the evidence before inferring an action or result. | A reader could visit later on Fridays during the trial. The unchanged seating leaves the chance of finding a seat uncertain. |
+| Numerical relevance | Read the passage before and after each cut. Can the reader still tell the baseline, size of change and measured outcome, if one exists? Retain the necessary units, period and comparison. Remove figures that do no explanatory work or move them to notes. | The old and new Friday closing times show the two additional hours. The four-week duration matters to a reader deciding whether the change is permanent. |
+| Practical consequence | For each material party, what can they decide, receive or forgo? Explain a concrete trade-off or limit. Which benefits are intended, and which results have actually been observed? | A reader could visit later on Fridays during the trial. The unchanged seating leaves the chance of finding a seat uncertain. |
 | Closing synthesis | Read the opening question and the ending together. Which earlier findings does the last paragraph join to answer the question? Include a future observation only when it would change that answer. | If the article asks whether evening access improves, close with the additional time and the unchanged seating. A generic promise to follow future updates leaves the answer unfinished. |
 
 These questions can lead to different decisions about the same sentence. Accuracy alone cannot establish that a number belongs in the body. A procedural detail may be correct while leaving the reader's choices unexplained. Choose the closing perspective that fits the brief. The library example is fictional. Its source describes an approved four-week trial, a shift in Friday closing from six to eight, no change in seating, and no measurements of crowding.
+
+## Check what a first-time reader understood
+
+When the audience lacks the writer’s subject knowledge, assign `reader_teachback` in the readability lane to a fresh reviewer with the intended level of familiarity. Give them the current draft, an audience description and a neutral prompt such as “What changed, who can do what now, and which part did you have to guess?” Capture their first account in their own words and the passage they relied on. Until then, withhold the factual answer, the writer’s reasoning and earlier reviews. Label an agent’s response as a simulated audience reading. Attribute a human response only to the person who actually read that version.
+
+Compare the unaided account with the evidence. Locate the first unsupported inference or missing premise. Repair that point with a short definition, a retained comparison or a concrete decision and its limit. Use the brief’s actual length tolerance to fit the explanation. For a strict limit, cut a weaker detail first. On a new test, use a fresh reader if the previous reviewer has already seen the answer key.
+
+For example, a fictional workshop will try a waiting list to fill cancelled seats. When a seat opens the organizer offers it to the first person on the list, who can accept or pass. The organizer wants to fill the room. Someone arranging travel still needs a confirmed place. A reader who thinks joining guarantees admission has identified a missing explanation. To judge whether the trial filled more seats, the article needs comparable attendance before and after, the available capacity and the period measured. If only a proposal exists, describe its intended effect and leave the outcome open.
+
+If an actual reader’s response conflicts with an agent’s approval, preserve their words and version, reopen the finding and repair it. When the new wording still needs that reader’s judgment, ask one targeted question such as “After joining the list, what would you still need before you could attend?” Record the version reread and their answer if received. Continue other checks while waiting and report any outstanding human response accurately.
 
 ## Preserve meaning during editing
 
