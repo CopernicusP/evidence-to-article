@@ -5,7 +5,7 @@ Turn a research report or evidence packet into a Chinese article and an English 
 
 Evidence to Article is the reusable writing and review core. It helps an agent choose a useful angle, explain the evidence in the reader's order, preserve an appropriate authorial voice, and review the finished text independently. Organization-specific wrappers provide audience, length, brand and delivery requirements.
 
-Current version: **0.3.1** · [Writing skill](skills/evidence-to-article/SKILL.md) · [Bilingual example](examples/library-hours/README.md) · [Organization profile](docs/organization-profile.template.md)
+Current version: **0.3.2** · [Writing skill](skills/evidence-to-article/SKILL.md) · [Bilingual example](examples/library-hours/README.md) · [Organization profile](docs/organization-profile.template.md)
 
 ## Try it
 
@@ -34,7 +34,11 @@ assign each applicable check to an independent reviewer. Have one writer integra
 
 > 使用 evidence-to-article，把这份研究写成中文阅读稿和英文 Blog。读者是___，需要弄清___，篇幅是___。希望作者有自己的判断、语气自然；事实、条件和归因保留。按读者的理解顺序写，不要照着研究提纲压缩。
 
-## What 0.3.1 adds
+## What 0.3.2 adds
+
+For successive revisions, preserve the original brief and every still-applicable correction. A continuity reviewer compares the earlier fixes with the current article. The final reviewer checks the entire assignment. When length is specified in body pages, count only the occupied body area in the delivery render. The [cumulative contract](skills/evidence-to-article/references/manifest-contract.md) binds the frozen scope, current evidence and review records.
+
+## Reader teach-back
 
 Where a draft assumes specialist knowledge, a fresh reader explains it in their own words before seeing the evidence or the writer’s rationale. The writer uses that account to repair the missing premise, preserve figures needed to judge scale and explain each party’s choices and limits. A reported human misunderstanding reopens an earlier agent approval. The [editorial rubric](skills/evidence-to-article/references/editorial-decisions.md) describes how to record the answer and test the revision.
 

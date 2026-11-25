@@ -15,6 +15,12 @@ Use these as tests of a passage or decision, not mandatory headings in the publi
 
 Follow the editor's file reference and identify the version. Inspect its comments, replies, anchors and tracked revisions when present. If comments were supplied as screenshots, record the visible anchor and any missing surrounding text. For each actionable note, identify the problem, make the smallest sufficient repair and reread the changed passage in context. An ambiguous anchor stays open until the intended passage can be identified. If another copy is accessible, say which one was inspected and distinguish independent improvements from responses to unseen feedback.
 
+## Carry earlier revisions forward
+
+For a continuing assignment, start with the original purpose, audience, length, structure and deliverables. Open the review copy and the version that resolved each previously accepted issue. Give each requirement a stable ID and cite the round, exact source and passage. Retain all agreed fixes, including ones absent from the newest comments. For a later instruction that actually replaces an earlier one, link their IDs and record the instruction author, locator and reason. If earlier evidence is unavailable, name the specific gap and keep the affected check open.
+
+On the current copy, read each earlier fix beside its new counterpart. Quote or locate both passages and record how the requirement survives any rewrite. For a removal, anchor the current check to the surrounding passage and explain what the reviewer inspected. Check the actual delivered render as well as the canonical text. For example, restoring a paragraph can displace a chart caption or shorten the final body page. Count a half-filled body page as half a page and a sources-only page as zero. Keep the original typography, margins and spacing unless the brief changed. If the body is short, add the supported context the reader needs. Do another full-set read on the exported version after repairs. The latest comments alone do not define that read.
+
 ## Test the reader's answer
 
 | Criterion | Question for its reviewer | Example using the synthetic library notice |

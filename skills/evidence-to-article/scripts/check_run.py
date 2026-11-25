@@ -2,6 +2,8 @@
 """Audit files and recorded review attestations; this does not fact-check prose."""
 
 import argparse
+import hashlib
+import math
 from datetime import datetime
 import json
 from pathlib import Path
@@ -113,7 +115,144 @@ def audit_review_team(manifest, canonical, current_reviews, issue):
             issue("review_order", f"Holistic review {review_id} started before all specialists completed this run.")
 
 
-def audit(manifest, base):
+def nonblank(value):
+    return isinstance(value, str) and bool(value.strip())
+
+
+def revision_file(base, record, path_key, hash_key):
+    """Check the exact evidence bytes using portable paths relative to the run."""
+    relative = record.get(path_key)
+    if (not nonblank(relative) or "\\" in relative or ":" in relative
+            or any(part in ("", ".", "..") for part in relative.split("/"))):
+        raise ValueError(f"{path_key} requires a path inside the run directory.")
+    path = base / relative
+    if path.resolve() != base.resolve() / relative or not path.is_file():
+        raise ValueError(f"{path_key} must identify a regular file inside the run.")
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    if record.get(hash_key) != digest.hexdigest():
+        raise ValueError(f"{hash_key} differs from the current {path_key}.")
+    return path
+
+
+def active_requirements(plan, canonical):
+    rounds = plan.get("rounds") if isinstance(plan, dict) else None
+    if not isinstance(rounds, list) or not rounds:
+        raise ValueError("The frozen plan needs the initial brief and its subsequent rounds.")
+    active, seen, versions = {}, set(), set()
+    for index, entry in enumerate(rounds):
+        if not isinstance(entry, dict) or not nonblank(entry.get("version")) or entry["version"] in versions:
+            raise ValueError("Each round needs a unique version.")
+        versions.add(entry["version"])
+        rows = entry.get("requirements")
+        if not isinstance(rows, list) or (index == 0 and not rows):
+            raise ValueError("Each round needs a requirements list; the original brief cannot be empty.")
+        earlier = dict(active)
+        for row in rows:
+            if not isinstance(row, dict) or any(not nonblank(row.get(k)) for k in ("id", "article_id", "source", "requirement")):
+                raise ValueError("Each requirement needs an ID, canonical article ID, source locator and requirement.")
+            req_id, article_id = row["id"], row["article_id"]
+            if req_id in seen or article_id not in canonical:
+                raise ValueError(f"Requirement {req_id} needs a unique ID and known article.")
+            seen.add(req_id)
+            replacements = row.get("supersedes", [])
+            if (not isinstance(replacements, list) or any(not nonblank(k) for k in replacements)
+                    or (replacements and not nonblank(row.get("reason")))):
+                raise ValueError(f"{req_id} needs valid supersedes IDs and a reason for the later instruction.")
+            for old in replacements:
+                if old not in active or old not in earlier or earlier[old]["article_id"] != article_id:
+                    raise ValueError(f"{req_id} can supersede only an active requirement from an earlier round for this article.")
+                del active[old]
+            active[req_id] = row
+    return active
+
+
+def audit_body_render(base, target, render):
+    if not isinstance(target, dict) or not nonblank(target.get("delivery_role")):
+        raise ValueError("page_range needs its delivery role and bounds.")
+    lo, hi = target.get("min"), target.get("max")
+    if not all(type(x) in (int, float) and 0 < x < float("inf") for x in (lo, hi)) or lo > hi:
+        raise ValueError("page_range requires positive, finite min and max in order.")
+    if not isinstance(render, dict):
+        raise ValueError("A rendered body-page requirement needs body_render evidence.")
+    revision_file(base, render, "delivery_path", "delivery_sha256")
+    pdf = revision_file(base, render, "render_path", "render_sha256")
+    with pdf.open("rb") as stream:
+        if stream.read(5) != b"%PDF-":
+            raise ValueError("render_path must identify the measured PDF.")
+    fractions = render.get("body_page_fractions")
+    if (not isinstance(fractions, list) or not fractions
+            or any(type(x) not in (int, float) or not 0 <= x <= 1 for x in fractions)):
+        raise ValueError("Provide one finite occupied body fraction from 0 to 1 per physical page.")
+    pages = math.fsum(fractions)
+    if not lo <= pages <= hi:
+        raise ValueError(f"Body occupies {pages:g} equivalent pages, outside {lo:g}–{hi:g}; exclude references and unused space.")
+    return pages
+
+
+def audit_cumulative(manifest, base, canonical, texts, hashes, current_reviews):
+    """Validate the frozen scope and current records, not the semantic content of a fix."""
+    record = manifest.get("cumulative_revision")
+    if manifest.get("schema_version") != 2 or not isinstance(record, dict):
+        raise ValueError("Cumulative checking requires schema 2 and a cumulative_revision object.")
+    path = revision_file(base, record, "plan_path", "plan_sha256")
+    if path.stat().st_size > 4 * 1024 * 1024:
+        raise ValueError("Revision plan exceeds the supported 4 MiB.")
+    plan = json.loads(path.read_text(encoding="utf-8"))
+    active = active_requirements(plan, canonical)
+    if "previous_plan" in plan:
+        previous = plan["previous_plan"]
+        if not isinstance(previous, dict):
+            raise ValueError("previous_plan requires the earlier plan path and its archived hash.")
+        previous_path = revision_file(base, previous, "path", "sha256")
+        if previous_path.stat().st_size > 4 * 1024 * 1024:
+            raise ValueError("Archived revision plan exceeds the supported 4 MiB.")
+        archived = json.loads(previous_path.read_text(encoding="utf-8"))
+        old_rounds = archived.get("rounds") if isinstance(archived, dict) else None
+        rounds = plan["rounds"]
+        if (not isinstance(old_rounds, list) or not old_rounds or len(rounds) <= len(old_rounds)
+                or rounds[:len(old_rounds)] != old_rounds):
+            raise ValueError("Carry forward all frozen rounds unchanged, then append the new round.")
+    checks = record.get("checks")
+    if not isinstance(checks, dict) or set(checks) != set(active):
+        missing = sorted(set(active) - set(checks if isinstance(checks, dict) else ()))
+        raise ValueError(f"Current checks must cover exactly the active requirements. Missing IDs: {missing}.")
+    pages = {}
+    for key, requirement in active.items():
+        article_id = requirement["article_id"]
+        check = checks[key]
+        if (not isinstance(check, dict) or check.get("status") != "verified"
+                or not nonblank(check.get("evidence")) or not nonblank(check.get("quote"))):
+            raise ValueError(f"{key} needs a verified disposition, comparison evidence and current article quote.")
+        if (article_id not in hashes or check.get("article_sha256") != hashes[article_id]
+                or check["quote"] not in texts.get(article_id, "")):
+            raise ValueError(f"{key} is stale or its quoted passage is absent from the current article.")
+        if "prior_fix" in requirement:
+            prior = requirement["prior_fix"]
+            if not isinstance(prior, dict) or not nonblank(prior.get("quote")):
+                raise ValueError(f"{key} needs the corresponding quote from the previously accepted version.")
+            archived = revision_file(base, prior, "path", "sha256")
+            if prior["quote"] not in archived.read_text(encoding="utf-8"):
+                raise ValueError(f"{key} prior fix quote is absent from its archived version.")
+        if "page_range" in requirement:
+            pages[key] = audit_body_render(base, requirement["page_range"], check.get("body_render"))
+    checks_hash = sha256(json.dumps(checks, sort_keys=True, ensure_ascii=False,
+                                   separators=(",", ":"), allow_nan=False).encode("utf-8"))
+    for article_id in {row["article_id"] for row in active.values()}:
+        if "revision_continuity" not in canonical[article_id].get("required_criteria", []):
+            raise ValueError(f"{article_id} needs the revision_continuity criterion.")
+        for criterion in ("revision_continuity", "holistic"):
+            matching = [r for r in current_reviews[article_id] if r.get("criterion") == criterion]
+            if (len(matching) != 1 or matching[0].get("revision_plan_sha256") != record["plan_sha256"]
+                    or matching[0].get("revision_checks_sha256") != checks_hash):
+                raise ValueError(f"{article_id} needs a current {criterion} approval bound to the complete plan and checks hashes.")
+    return {"plan_sha256": record["plan_sha256"], "checks_sha256": checks_hash, "verified_requirements": len(active),
+            "body_page_equivalents": pages, "layout_independently_measured": False}
+
+
+def audit(manifest, base, require_cumulative=False):
     errors, warnings, counts = [], [], {}
 
     def issue(code, message, warning=False):
@@ -321,9 +460,16 @@ def audit(manifest, base):
             completed = {review["lane"] for review in current}
             for missing in sorted({"readability", "source", "overall"} - completed):
                 issue("missing_review", "Article " + key + " lacks a current independent approved " + missing + " review.")
+    cumulative = None
+    if require_cumulative or "cumulative_revision" in manifest:
+        try:
+            cumulative = audit_cumulative(manifest, base, canonical, texts, hashes, current_reviews)
+        except (OSError, UnicodeError, ValueError, TypeError, OverflowError, RecursionError) as exc:
+            issue("cumulative_revision", str(exc))
     contracts = {1: "legacy_lanes", 2: "independent_criteria_and_holistic"}
     contract = contracts.get(version) if type(version) is int else None
     return {"ok": not errors, "schema_version": version, "review_contract": contract, "semantic_verification_performed": False,
+            "cumulative_revision": cumulative,
             "scope": "Deterministic files, counts, claim declarations, and review attestations only; no source reading, fact-checking, prose quality judgment, or page-count verification.",
             "body_counts": counts, "errors": errors, "warnings": warnings,
             "error_count": len(errors), "warning_count": len(warnings)}
@@ -332,12 +478,13 @@ def audit(manifest, base):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
+    parser.add_argument("--require-cumulative", action="store_true", help="Require the frozen revision plan and current checks.")
     args = parser.parse_args()
     try:
         manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
         if not isinstance(manifest, dict):
             raise ValueError("Manifest must be a JSON object.")
-        result = audit(manifest, args.manifest.resolve().parent)
+        result = audit(manifest, args.manifest.resolve().parent, require_cumulative=args.require_cumulative)
     except (OSError, UnicodeError, ValueError, TypeError, KeyError, AttributeError) as exc:
         result = {"ok": False, "semantic_verification_performed": False, "errors": [{"code": "manifest", "message": str(exc)}], "warnings": [], "error_count": 1, "warning_count": 0}
     print(json.dumps(result, ensure_ascii=False, indent=2))

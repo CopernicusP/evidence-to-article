@@ -151,6 +151,49 @@ def with_criterion_reviews(legacy):
     return manifest
 
 
+def bind_revision_approvals(manifest):
+    revision = manifest["cumulative_revision"]
+    serialized = json.dumps(revision["checks"], ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    checks_hash = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    for review in manifest["reviews"]:
+        if review["criterion"] in ("revision_continuity", "holistic"):
+            review["revision_plan_sha256"] = revision["plan_sha256"]
+            review["revision_checks_sha256"] = checks_hash
+
+
+def bind_revision_plan(directory, manifest, plan):
+    revision = manifest["cumulative_revision"]
+    path = directory / revision["plan_path"]
+    path.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+    revision["plan_sha256"] = digest(path)
+    bind_revision_approvals(manifest)
+
+
+def with_cumulative_checks(directory, legacy):
+    manifest = with_criterion_reviews(legacy)
+    article = next(a for a in manifest["artifacts"] if a["id"] == "en-md")
+    article["required_criteria"].append("revision_continuity")
+    template = next(r for r in manifest["reviews"] if r["id"] == "en-md-understanding")
+    manifest["reviews"].append(dict(template, id="en-md-continuity", criterion="revision_continuity",
+                                    reviewer_id="simulated-continuity-reader"))
+    plan = {"rounds": [
+        {"version": "V1", "requirements": [
+            {"id": "original-wording", "article_id": "en-md", "source": "Simulated original brief",
+             "requirement": "Tell the reader how to quote the interview."}]},
+        {"version": "V2", "requirements": [
+            {"id": "record-context", "article_id": "en-md", "source": "Simulated follow-up note",
+             "requirement": "Tell the reader what context to record."}]},
+    ]}
+    manifest["cumulative_revision"] = {"plan_path": "revision-plan.json", "checks": {
+        "original-wording": {"status": "verified", "article_sha256": article["sha256"],
+                             "quote": "Keep the original wording", "evidence": "The simulated reader found the instruction about quotations."},
+        "record-context": {"status": "verified", "article_sha256": article["sha256"],
+                           "quote": "Record the context of the conversation.", "evidence": "The simulated reader checked the instruction in the list."},
+    }}
+    bind_revision_plan(directory, manifest, plan)
+    return manifest, plan
+
+
 class WorkflowTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="evidence-to-article-test-")
@@ -186,6 +229,143 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(report["schema_version"], 2)
         self.assertEqual(report["review_contract"], "independent_criteria_and_holistic")
         self.assertFalse(report["semantic_verification_performed"])
+
+    def test_cumulative_revision_is_opt_in(self):
+        for ordinary in (self.manifest, with_criterion_reviews(self.manifest)):
+            with self.subTest(version=ordinary["schema_version"]):
+                path = write_manifest(self.valid, ordinary)
+                self.assertEqual(run_cli("check_run.py", "--manifest", path)[0], 0)
+                code, report = run_cli("check_run.py", "--manifest", path, "--require-cumulative")
+                self.assertEqual(code, 1, report)
+                self.assertIn("cumulative_revision", [err["code"] for err in report["errors"]])
+        cumulative, _ = with_cumulative_checks(self.valid, self.manifest)
+        code, report = run_cli("check_run.py", "--manifest", write_manifest(self.valid, cumulative), "--require-cumulative")
+        self.assertEqual(code, 0, report)
+        self.assertFalse(report["semantic_verification_performed"])
+
+    def test_cumulative_revision_preserves_earlier_requirements_and_current_evidence(self):
+        original, _ = with_cumulative_checks(self.valid, self.manifest)
+        invalid = "0" * 64
+        for case, edit in [
+            ("latest round alone", lambda checks: checks.pop("original-wording")),
+            ("unapproved replacement", lambda checks: checks.update({"replacement": checks.pop("original-wording")})),
+            ("quote from another draft", lambda checks: checks["original-wording"].update(quote="The quotation instruction was here before.")),
+            ("evidence from another draft", lambda checks: checks["original-wording"].update(article_sha256=invalid)),
+        ]:
+            with self.subTest(case=case):
+                manifest = copy.deepcopy(original)
+                edit(manifest["cumulative_revision"]["checks"])
+                bind_revision_approvals(manifest)
+                self.assertIn("cumulative_revision", [err["code"] for err in audit(manifest, self.valid)["errors"]])
+
+    def test_cumulative_revision_approvals_bind_the_frozen_plan_and_current_checks(self):
+        original, _ = with_cumulative_checks(self.valid, self.manifest)
+        for review_id in ("en-md-continuity", "en-md-holistic"):
+            for field in ("revision_plan_sha256", "revision_checks_sha256"):
+                for missing in (True, False):
+                    with self.subTest(review=review_id, binding=field, missing=missing):
+                        manifest = copy.deepcopy(original)
+                        review = next(r for r in manifest["reviews"] if r["id"] == review_id)
+                        if missing:
+                            del review[field]
+                        else:
+                            review[field] = "0" * 64
+                        self.assertIn("cumulative_revision", [err["code"] for err in audit(manifest, self.valid)["errors"]])
+        path = self.valid / original["cumulative_revision"]["plan_path"]
+        path.write_bytes(path.read_bytes() + b"\n")
+        self.assertIn("cumulative_revision", [err["code"] for err in audit(original, self.valid)["errors"]])
+
+    def test_cumulative_revision_accepts_only_explicit_prior_supersession(self):
+        manifest, plan = with_cumulative_checks(self.valid, self.manifest)
+        change = plan["rounds"][1]["requirements"][0]
+        change.update(supersedes=["original-wording"], reason="The simulated editor explicitly replaced the quotation instruction.")
+        del manifest["cumulative_revision"]["checks"]["original-wording"]
+        bind_revision_plan(self.valid, manifest, plan)
+        report = audit(manifest, self.valid)
+        self.assertTrue(report["ok"], report)
+        for case, changes in [
+            ("no recorded reason", {"reason": ""}),
+            ("a requirement from this round", {"supersedes": ["record-context"]}),
+            ("an unknown requirement", {"supersedes": ["absent"]}),
+            ("a different article", {"article_id": "zh-md"}),
+        ]:
+            with self.subTest(case=case):
+                revised = copy.deepcopy(plan)
+                revised["rounds"][1]["requirements"][0].update(changes)
+                bind_revision_plan(self.valid, manifest, revised)
+                self.assertIn("cumulative_revision", [err["code"] for err in audit(manifest, self.valid)["errors"]])
+
+    def test_cumulative_revision_extends_the_frozen_previous_plan(self):
+        original, plan = with_cumulative_checks(self.valid, self.manifest)
+        archive = self.valid / "simulated-earlier-plan.json"
+        archive.write_text(json.dumps({"rounds": plan["rounds"][:1]}), encoding="utf-8")
+        previous = {"path": archive.name, "sha256": digest(archive)}
+        bind_revision_plan(self.valid, original, {**plan, "previous_plan": previous})
+        report = audit(original, self.valid)
+        self.assertTrue(report["ok"], report)
+
+        rewritten = copy.deepcopy(plan["rounds"])
+        rewritten[0]["requirements"][0]["requirement"] = "Use any wording for quotations."
+        for case, rounds, omitted_check in [
+            ("dropped earlier round", plan["rounds"][1:], "original-wording"),
+            ("rewritten earlier requirement", rewritten, None),
+            ("no new round", plan["rounds"][:1], "record-context"),
+        ]:
+            with self.subTest(case=case):
+                manifest = copy.deepcopy(original)
+                if omitted_check:
+                    del manifest["cumulative_revision"]["checks"][omitted_check]
+                # The revised snapshot passes in isolation with freshly simulated
+                # approvals. Its exact relationship to the older plan must fail.
+                bind_revision_plan(self.valid, manifest, {"rounds": rounds})
+                self.assertTrue(audit(manifest, self.valid)["ok"])
+                bind_revision_plan(self.valid, manifest, {"rounds": rounds, "previous_plan": previous})
+                self.assertIn("cumulative_revision", [err["code"] for err in audit(manifest, self.valid)["errors"]])
+
+    def test_cumulative_revision_rechecks_the_archived_fix_when_supplied(self):
+        manifest, plan = with_cumulative_checks(self.valid, self.manifest)
+        archive = self.valid / "simulated-earlier-draft.md"
+        archive.write_text("Preserve the interviewee's original words.\n", encoding="utf-8")
+        prior_fix = {"path": archive.name, "sha256": digest(archive), "quote": "the interviewee's original words"}
+        plan["rounds"][0]["requirements"][0]["prior_fix"] = prior_fix
+        bind_revision_plan(self.valid, manifest, plan)
+        report = audit(manifest, self.valid)
+        self.assertTrue(report["ok"], report)
+        archive.write_text("Describe the interview in your own words.\n", encoding="utf-8")
+        self.assertIn("cumulative_revision", [err["code"] for err in audit(manifest, self.valid)["errors"]])
+        prior_fix["sha256"] = digest(archive)
+        bind_revision_plan(self.valid, manifest, plan)
+        self.assertIn("cumulative_revision", [err["code"] for err in audit(manifest, self.valid)["errors"]])
+
+    def test_cumulative_page_range_counts_only_rendered_body_fractions(self):
+        manifest, plan = with_cumulative_checks(self.valid, self.manifest)
+        requirement = plan["rounds"][1]["requirements"][0]
+        requirement["page_range"] = {"min": 2, "max": 3, "delivery_role": "blog_en"}
+        bind_revision_plan(self.valid, manifest, plan)
+        # Both the bytes and the review are simulated. The last page is references only.
+        pdf = self.valid / "simulated-blog.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n% simulated delivery and render fixture\n%%EOF\n")
+        check = manifest["cumulative_revision"]["checks"]["record-context"]
+        check["body_render"] = {"delivery_path": pdf.name, "delivery_sha256": digest(pdf),
+                                "render_path": pdf.name, "render_sha256": digest(pdf),
+                                "body_page_fractions": [1, 1, 0]}
+        bind_revision_approvals(manifest)
+        report = audit(manifest, self.valid)
+        self.assertTrue(report["ok"], report)
+        self.assertEqual(report["cumulative_revision"]["body_page_equivalents"]["record-context"], 2)
+        self.assertFalse(report["cumulative_revision"]["layout_independently_measured"])
+
+        # New delivery bytes and their updated evidence still need fresh review.
+        pdf.write_bytes(pdf.read_bytes().replace(b"simulated delivery", b"updated delivery"))
+        check["body_render"].update(delivery_sha256=digest(pdf), render_sha256=digest(pdf))
+        self.assertIn("cumulative_revision", [err["code"] for err in audit(manifest, self.valid)["errors"]])
+        bind_revision_approvals(manifest)
+        self.assertTrue(audit(manifest, self.valid)["ok"])
+
+        check["body_render"]["body_page_fractions"] = [1, 0.1, 0]
+        bind_revision_approvals(manifest)
+        report = audit(manifest, self.valid)
+        self.assertIn("cumulative_revision", [err["code"] for err in report["errors"]])
 
     def test_v2_rejects_missing_criteria_unrelated_extras_and_reused_reviewers(self):
         cases = [
